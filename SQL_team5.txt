@@ -1,0 +1,737 @@
+Maximilian Sgodin
+Matrikel Nummer: 22 61 205
+
+2.1.1
+
+Durchschnittliche Bewertung für einen bestimmten Film anzeigen:
+
+SELECT
+	f.Titel,
+	AVG(b.Bewertungszahl) AS Durchschnittsbewertung,
+	COUNT(b.Bewertungszahl) AS Bewertungsanzahl
+FROM
+	Film f
+JOIN
+	Bewertung b ON f.Film_ID = b.Film_ID
+WHERE
+	f.Film_ID = [Film_ID]  -- Setze die Film-ID entsprechend
+GROUP BY
+	f.Titel;
+
+Alle Bewertungen für einen bestimmten Film anzeigen:
+
+SELECT
+	k.UserName AS KritikerName,
+	b.Bewertungszahl,
+	b.Kommentar,
+	b.Verfassungsdatum
+FROM
+	Bewertung b
+JOIN
+	Kritiker k ON b.Kritiker_ID = k.Kritiker_ID
+WHERE
+	b.Film_ID = [Film_ID]  -- Setze die Film-ID entsprechend
+ORDER BY
+	b.Verfassungsdatum DESC;  -- Sortierung nach Datum, absteigend (jüngste zuerst)
+
+Kritikerprofil-Anzeigen:
+
+SELECT
+	b.Film_ID,
+	f.Titel,
+	b.Bewertungszahl,
+	b.Kommentar,
+	b.Verfassungsdatum
+FROM
+	Bewertung b
+JOIN
+	Film f ON b.Film_ID = f.Film_ID
+WHERE
+	b.Kritiker_ID = [Kritiker_ID]  -- Setze die Kritiker-ID entsprechend
+ORDER BY
+	b.Verfassungsdatum DESC;  -- Sortierung nach Datum, absteigend (jüngste zuerst)
+
+2.1.2
+
+Filmdetails anzeigen:
+
+SELECT
+	f.Titel,
+	f.Erscheinungsjahr,
+	GROUP_CONCAT(g.Name SEPARATOR ', ') AS Genre,
+	AVG(b.Bewertungszahl) AS Durchschnittsbewertung,
+	COUNT(b.Bewertungszahl) AS Bewertungsanzahl
+FROM
+	Film f
+LEFT JOIN
+	ist_Genre ig ON f.Film_ID = ig.Film_ID
+LEFT JOIN
+	Genre g ON ig.Genre_ID = g.Genre_ID
+LEFT JOIN
+	Bewertung b ON f.Film_ID = b.Film_ID
+WHERE
+	f.Film_ID = [Film_ID]  -- Setze die Film-ID entsprechend
+GROUP BY
+	f.Titel, f.Erscheinungsjahr;
+	
+Liste der Hauptdarsteller und des Regisseurs anzeigen:
+
+-- Hauptdarsteller anzeigen
+SELECT
+	p.Name AS SchauspielerName,
+	si.Rolle,
+	si.Gage
+FROM
+	spielt_in si
+JOIN
+	Person p ON si.Person_ID = p.Person_ID
+WHERE
+	si.Film_ID = [Film_ID];  -- Setze die Film-ID entsprechend
+
+-- Regisseur anzeigen
+SELECT
+	p.Name AS RegisseurName,
+	ri.Gage
+FROM
+	regie_in ri
+JOIN
+	Person p ON ri.Person_ID = p.Person_ID
+WHERE
+	ri.Film_ID = [Film_ID];  -- Setze die Film-ID entsprechend
+
+2.1.3
+
+SELECT
+	f.Titel,
+	f.Erscheinungsjahr,
+	AVG(b.Bewertungszahl) AS Durchschnittsbewertung
+FROM
+	Film f
+JOIN
+	Bewertung b ON f.Film_ID = b.Film_ID
+JOIN
+	ist_Genre ig ON f.Film_ID = ig.Film_ID
+JOIN
+	Genre g ON ig.Genre_ID = g.Genre_ID
+WHERE
+	g.Name = '[Genre]'  -- Setze hier das gewünschte Genre ein
+GROUP BY
+	f.Titel, f.Erscheinungsjahr
+HAVING
+	AVG(b.Bewertungszahl) IS NOT NULL
+ORDER BY
+	Durchschnittsbewertung DESC;
+
+2.1.4
+
+SELECT
+	f.Titel,
+	COUNT(b.Bewertungszahl) AS AnzahlBewertungen,
+	AVG(b.Bewertungszahl) AS Durchschnittsbewertung
+FROM
+	Film f
+JOIN
+	Bewertung b ON f.Film_ID = b.Film_ID
+JOIN
+	ist_Genre ig ON f.Film_ID = ig.Film_ID
+JOIN
+	Genre g ON ig.Genre_ID = g.Genre_ID
+WHERE
+	b.Verfassungsdatum BETWEEN '[Startdatum]' AND '[Enddatum]'  -- Setze hier den gewünschten Zeitraum ein
+	AND g.Name = '[Genre]'  -- Optional: Filter nach Genre, entferne diese Zeile, wenn keine Genre-Filterung nötig ist
+GROUP BY
+	f.Titel
+ORDER BY
+	AnzahlBewertungen DESC;
+
+2.1.5
+
+SELECT
+	f.Titel,
+	b.Bewertungszahl,
+	b.Kommentar,
+	b.Verfassungsdatum
+FROM
+	Bewertung b
+JOIN
+	Film f ON b.Film_ID = f.Film_ID
+WHERE
+	b.Kritiker_ID = [Kritiker_ID]  -- Setze hier die Kritiker-ID ein
+ORDER BY
+	b.Verfassungsdatum DESC;  -- Standard-Sortierung nach Datum (jüngste zuerst)
+
+
+
+
+Denis Francesco Volpe 
+Matrikel Nummer : 22 68 709
+
+UserStory 2.2.1 :
+
+		-- Beginn der Transaktion
+		START TRANSACTION;
+		
+		-- wir machen eine temporöre Tabelle um auf der rechen/arbeiten zu können
+		CREATE TEMPORARY TABLE Kritiker_Bewertungsdurchschnitt (
+			Kritiker_ID int(11) NOT NULL,
+			Durchschnittsbewertung float NOT NULL,
+			PRIMARY KEY (Kritiker_ID)
+		) ENGINE=InnoDB;
+		
+		-- füge in die Tabelle eine berechnete Durschnittszahl von allen Kritiken eines Kritikers ein,
+		-- sowie seine ID 
+		INSERT INTO Kritiker_Bewertungsdurchschnitt (Kritiker_ID, Durchschnittsbewertung)
+		SELECT
+			Kritiker_ID,
+			AVG(Bewertungszahl) AS Durchschnittsbewertung
+		FROM
+			Bewertung
+		GROUP BY
+			Kritiker_ID;
+		
+		-- Update die Kritiker Tabelle mit neuen Bewertungsstil, Enum wird durch untere 
+		-- Bewertungschema geändert 
+		UPDATE Kritiker k
+		JOIN Kritiker_Bewertungsdurchschnitt kbd ON k.Kritiker_ID = kbd.Kritiker_ID
+		SET k.Bewertungsstil = CASE
+			WHEN kbd.Durchschnittsbewertung <= 4 THEN 'Bad'
+			WHEN kbd.Durchschnittsbewertung BETWEEN 5 AND 7 THEN 'Neutral'
+			ELSE 'Good'
+		END;
+		
+		-- Entfernen der temporären Tabelle 
+		DROP TEMPORARY TABLE Kritiker_Bewertungsdurchschnitt;
+
+		-- Transaktion erfolgreich abschließen
+		COMMIT;
+
+
+
+
+UserStory 2.2.2 :
+
+
+    DELIMITER //
+		
+		-- Hier muss eine Prozedur erstellt werden weil MySQl keine IF,ELSE sonst erkennt
+		CREATE PROCEDURE InsertBewertung()
+		BEGIN
+			DECLARE kritikerID INT;
+			DECLARE filmID INT;
+
+			-- Transaktion starten
+			START TRANSACTION;
+
+			-- Kritiker_ID ermitteln
+			SELECT Kritiker_ID INTO kritikerID
+			FROM Kritiker
+			WHERE UserName LIKE '%FilmFanatic%'
+			LIMIT 1;
+
+			-- Film_ID ermitteln
+			SELECT Film_ID INTO filmID
+			FROM Film
+			WHERE Titel LIKE '%Memento%'
+			LIMIT 1;
+
+			-- Prüfen, ob beide IDs gefunden wurden
+			IF kritikerID IS NOT NULL AND filmID IS NOT NULL THEN
+				-- Bewertung hinzufügen wenn kritikerID und filmID existieren
+				INSERT INTO Bewertung (Kritiker_ID, Film_ID, Bewertungszahl, Kommentar, Verfassungsdatum, Filmstatus)
+				VALUES (kritikerID, filmID, 8, 'A thrilling movie with an unexpected twist.', '2024-06-21', 'Seen');
+				
+				-- Transaktion abschließen
+				COMMIT;
+			ELSE
+				-- Transaktion rückgängig machen
+				ROLLBACK;
+			END IF;
+		END //
+
+		DELIMITER ;
+
+		-- Stored Procedure aufrufen
+		CALL InsertBewertung();
+
+
+
+
+
+Userstory 2.2.3 :
+        
+        START TRANSACTION;
+        UPDATE Bewertung
+		SET Bewertungszahl = 9,
+			Kommentar = 'An even more thrilling movie with a deeper twist.',
+			-- innodb schreibweise für current date (NOW() würde noch zeit angeben)
+			-- in zukunft -> erfassen ob etwas bearbeitet wurde
+			Verfassungsdatum = CURDATE(),	
+			Filmstatus = 'Seen'
+		WHERE Kritiker_ID = (
+			SELECT Kritiker.Kritiker_ID
+			FROM Kritiker
+			WHERE Kritiker.UserName LIKE '%Suchstring%'
+		) AND Film_ID = (
+			SELECT Film.Film_ID
+			FROM Film
+			WHERE Film.Titel LIKE '%Suchstring%'
+		);
+		COMMIT;
+		
+
+
+UserStory 2.2.4 : 
+
+-- Hiermit wähle ich die Informationen aus die ich später in einer Zeile darstellen möchte 
+		SELECT Film.Film_ID, Film.Titel, Genre.Name, 
+				AVG(Bewertung.Bewertungszahl) AS Durchschnittsbewertung, 
+				COUNT(Bewertung.Bewertungszahl) AS AnzahlBewertungen
+		
+			
+		-- INNER JOIN : combiniert Tabellen in dem die gleichen Werte auftreten 
+	
+		-- Daten werden aus Film entnommen
+		FROM Film
+		-- INNER JOIN : es werden nur Filme ausgewählt die eine Bewertung haben 
+			JOIN Bewertung ON Film.Film_ID = Bewertung.Film_ID
+		-- INNER JOIN : ordnet zu welcher Film welches Genre ist 
+			JOIN ist_Genre ON Film.Film_ID = ist_Genre.Film_ID
+		-- INNER JOIN : löst auf welche ist_Genre ID das tatsächliche Genre ist von der Genre Entität
+			JOIN Genre ON ist_Genre.Genre_ID = Genre.Genre_ID
+			
+		-- filtert nur wo der GenreName Action ist 
+		WHERE Genre.Name = 'Action'
+		-- Gruppiert nach Filmtitel, Film_ID und GenreName fur AVG und COUNT 
+		GROUP BY Film.Film_ID, Film.Titel, Genre.Name
+		-- FIlm muss mindestens eine Bewertung über 0 haben 
+		HAVING COUNT(Bewertung.Bewertungszahl) > 0
+		-- Sortiere so dass es absteigend angezeigt wird 
+		ORDER BY Durchschnittsbewertung DESC;
+		
+		
+		
+		
+Userstory 2.2.5 :
+
+-- kreiere eine Temporäre tabelle für Berechnung
+		CREATE TEMPORARY TABLE Kritiker_Aktivität_Temp (
+		Kritiker_ID int(11) NOT NULL,
+		UserName varchar(255) NOT NULL,
+		Anzahl_Bewertungen int NOT NULL,
+		Status varchar(10) NOT NULL
+		);
+		
+		-- die Tabelle soll Kritiker Aktivitäten anzeigen
+		INSERT INTO Kritiker_Aktivität_Temp (Kritiker_ID, UserName, Anzahl_Bewertungen, Status)
+		SELECT
+			k.Kritiker_ID,
+			k.UserName,
+			
+			-- zählt die insgesammte Anzahl an Bewertungen pro Kritiker_ID auf
+			COUNT(b.Bewertungszahl) AS Anzahl_Bewertungen,
+			
+			-- checkt ob das datum älter als 3 monate ist falls ja dann inaktiv 
+			-- MAX gibt den größten Wert zurück also den "neuste" Bewertungsdatum um zu schauen wie weit dieser zurückliegt
+			CASE
+				WHEN MAX(b.Verfassungsdatum) < DATE_SUB(CURDATE(), INTERVAL 3 MONTH) THEN 'Inaktiv'
+				ELSE 'Aktiv'
+			
+			-- Ergebnis wird als Status gespeichert
+			END AS Status
+			
+		-- k als kurzform für Kritiker tabelle 
+		FROM
+			Kritiker k
+			
+		-- berücksichtigt Datensätze wo Kritiker eine Bewertung abgegeben haben 
+		JOIN
+			Bewertung b ON k.Kritiker_ID = b.Kritiker_ID
+			
+		-- gruppiert für Aggregationsfunktionen
+		GROUP BY
+			k.Kritiker_ID, k.UserName;
+		
+		-- Gebe mir alle Daten von der Temporären Tabelle zurück
+		SELECT * FROM Kritiker_Aktivität_Temp;
+		DROP TEMPORARY TABLE Kritiker_Aktivität_Temp;
+		
+		
+		
+	
+Stephane Sandevski
+Matrikelnummer: 22 59 802
+
+
+--2.3.1:"Als Benutzer möchte ich wissen wie viel die Personen verdienen. Und sehen wer am meisten verdient"
+
+SELECT
+	p.name, SUM(g.Gage) AS Gesamtgage --nimmt die Gage g summiert sie als Gesamtgage 
+FROM 
+	Person p  --nimmt es aus der tabelle Personen p
+JOIN 
+	spielt_in g ON p.Person_ID = g.Person_ID --Joint tabelle mit Personen welche nur Schauspieler sind
+GROUP BY 
+	p.name -- gruppiert Tabelle nach Name und Gesamtgage
+ORDER BY 
+	Gesamtgage DESC; --Sortiert die Gesamtgage der Schauspieler aller Filme in der Datenbank von Höchsten nach niedrigsten 
+
+
+
+
+
+--2.3.2:" Als Benutzer möchte ich die am neusten erschienen Filme in einem bestimmten Genre sehen, damit ich interessante neue Filme finden kann"
+
+
+SELECT 
+	f.Titel, f.Erscheinungsjahr, g.Name AS Genre, f.Bewertungsdurchschnitt -- nimmt Titel, Erscheinungsjahr und Bewetungsdurchschnitt FROM Film als f
+FROM 
+	Film f -- von Tabelle Film 
+JOIN 
+	ist_Genre ig ON f.Film_ID = ig.Film_ID -- joint Tabelle Film mit der Tabelle ist_Genre basierend auf Spalte Film_ID
+JOIN 
+	Genre g ON ig.Genre_ID = g.Genre_ID -- joint Tabelle ist_Genre mit der Tabelle Gerne basierend auf Spalte Genre_ID
+WHERE 
+	g.Name = 'Action'-- -> Genre einfügen nach Interesse
+ORDER BY 
+	g.Name, f.Erscheinungsjahr DESC; -- gibt anhand des Genres den die neuesten Filme an und die Durchschnittsbewertung
+
+	
+
+
+	
+--2.3.3:"Als Benutzer möchte ich nach Filmen suchen können, die von einem bestimmten Regisseur geleitet wurden, um deren Werke zu erkunden"
+
+---- Anzeigen lassen welche regisseure es in der Datenbank zur Auswahl gibt
+SELECT
+	p.name  -- Namen der Person anzeigen
+FROM 
+	Person p -- aus Person 
+JOIN 
+	regie_in g ON p.Person_ID = g.Person_ID -- verbindet alle Personen welche regie haben mit ihren Namen
+GROUP BY 
+	p.name
+ 
+
+-- Mit dem Ausgewählten Regisseur hier vortfahren
+SELECT 
+	p.Name, f.Titel, f.Erscheinungsjahr -- Name von der Person mit relation regie_in zu film, Titel und Erscheinungsdatums aller Filme
+FROM
+	Person p -- aus Tabelle Person
+JOIN
+	regie_in ri ON p.Person_ID = ri.Person_ID -- Joint Tabelle Person p mit der Tabelle regie_in ri anhand der Person_ID 
+JOIN
+	Film f ON ri.Film_ID = f.Film_ID -- Joint Tabelle regie_in ri  mit der Tabelle Film f anhand  der Film_ID
+WHERE
+	p.Name = 'Christopher Nolan' -- Regisseur nach Interesse und welcher Verfügbar ist eingeben
+ORDER BY
+	f.Erscheinungsjahr DESC, p.Name, f.Titel; -- Gibt Alle Filme dieses Regisseures in Erscheinungsjahr mit neuesten zu erst
+
+
+
+
+-- 2.3.4: "Als Benutzer möchte ich wissen wie streng jeder Kritiker bewertet, um so zu entscheiden, ob seine Meinung ernst zu nehmen ist.
+
+
+SELECT
+	k.Name AS Kritiker, AVG(b.Bewertungszahl) AS BewertungsDurchschnitt 
+FROM
+	Bewertung b -- aus der Tabelle Bewertung b
+JOIN
+	Kritiker k ON b.Kritiker_ID = k.Kritiker_ID -- joint die Name der Kritiker mit ihrer zugehörigen avg bewertungsanzahl basierend auf der KritikerID
+GROUP BY
+	k.Name
+ORDER BY
+	BewertungsDurchschnitt DESC; -- Sortiert mit den Kritikern mit der höchsten Bewertungsdurchschnitt als erstes
+
+
+
+
+-- 2.3.5: Als Kritiker möchte ich wenn ich ein neues Lieblingsgenre habe, diese geändert wird anhand meines best bewertensten Genres.
+
+-- Erstellen eines temporären Tables mit dem Durchschnitt der Bewertungszahlen pro Genre für einen bestimmten Kritiker, höchstes is das statistische LieblingsGenre.
+-- Anzeigung der jetzigen Lieblingsgenres eines Kritikers
+-------------------------------------------------------------------------------
+-- Zwecksmäßiger SQL code für die Demonstration
+SELECT g.Name AS LieblingsGenre
+FROM LieblingsGenre lg
+JOIN Genre g ON lg.Genre_ID = g.Genre_ID
+WHERE lg.Kritiker_ID = 5;
+
+
+CREATE TEMPORARY TABLE  Temp_Durchschnittsbewertung AS
+SELECT g.Name AS Genre,AVG(b.Bewertungszahl) AS Durchschnittsbewertung
+FROM Bewertung b
+JOIN Film f ON b.Film_ID = f.Film_ID
+JOIN ist_Genre ig ON f.Film_ID = ig.Film_ID
+JOIN Genre g ON ig.Genre_ID = g.Genre_ID
+JOIN Kritiker k ON b.Kritiker_ID = k.Kritiker_ID
+WHERE k.Kritiker_ID = 5  -- Hier die ID des Kritikers einfügen (1-5 als Kritiker_ID)
+GROUP BY g.Name
+ORDER BY Durchschnittsbewertung DESC;
+
+-- Ausgabe der temp Table mit den Höchsten Bewertungsdurchschnitt.
+SELECT Genre, Durchschnittsbewertung
+FROM Temp_Durchschnittsbewertung
+WHERE Durchschnittsbewertung = (
+    SELECT MAX(Durchschnittsbewertung) -- es kann sein dass ein Kritiker mehrere Lieblingsgenres haben kann.
+    FROM Temp_Durchschnittsbewertung
+);
+-- Zur zeit ist bei Kritiker 5 das lg = 12 = Romance, aber bei der Statistik is Romance nicht das lg sondern Action und Adventure.
+------------------------------------------------------------------------------------------------
+
+START TRANSACTION;
+
+-- Temporäre Tabelle mit den Durchschnittsbewertungen der Genres für den Kritiker erstellen
+CREATE TEMPORARY TABLE Temp_Durchschnittsbewertung AS
+SELECT g.Genre_ID, AVG(b.Bewertungszahl) AS Durchschnittsbewertung
+FROM Bewertung b
+JOIN Film f ON b.Film_ID = f.Film_ID
+JOIN ist_Genre ig ON f.Film_ID = ig.Film_ID
+JOIN Genre g ON ig.Genre_ID = g.Genre_ID
+JOIN Kritiker k ON b.Kritiker_ID = k.Kritiker_ID
+WHERE k.Kritiker_ID = 5  -- Hier die ID des Kritikers einfügen (1-5 als Kritiker_ID)
+GROUP BY g.Genre_ID
+ORDER BY Durchschnittsbewertung DESC;
+
+-- Temporäre Tabelle mit den bestbewerteten Genres erstellen
+CREATE TEMPORARY TABLE BestbewerteteGenres AS
+SELECT Genre_ID
+FROM Temp_Durchschnittsbewertung
+WHERE Durchschnittsbewertung = (
+    SELECT MAX(Durchschnittsbewertung)
+    FROM Temp_Durchschnittsbewertung
+);
+
+-- Aktuelle Lieblingsgenres des Kritikers löschen
+DELETE FROM LieblingsGenre
+WHERE Kritiker_ID = 5;
+
+-- Neue Lieblingsgenres in die Tabelle LieblingsGenre einfügen
+INSERT INTO LieblingsGenre (Kritiker_ID, Genre_ID)
+SELECT 5, Genre_ID
+FROM BestbewerteteGenres;
+
+COMMIT;
+
+-- nach dem Commit ist das neue lg 1 = Action, 2 = Adventure
+-- Überprüfung
+SELECT g.Name AS LieblingsGenre
+FROM LieblingsGenre lg
+JOIN Genre g ON lg.Genre_ID = g.Genre_ID
+WHERE lg.Kritiker_ID = 5;
+-- Das neue LG ist Action und Advanture.
+-- (Nach der Präsentation ist Kritiker 5 bereits geupdated)
+
+
+
+Marius Ureche
+Matrikelnummer: 22 60 716
+
+2.4.1
+SELECT
+    f.Titel AS film_title,         
+    f.Erscheinungsjahr AS release_year, 
+    GROUP_CONCAT(g.Name SEPARATOR ', ') AS preferred_genres  
+FROM
+    Person p
+    INNER JOIN spielt_in si ON p.Person_ID = si.Person_ID
+    INNER JOIN Film f ON si.Film_ID = f.Film_ID
+    INNER JOIN ist_Genre ig ON f.Film_ID = ig.Film_ID
+    INNER JOIN Genre g ON ig.Genre_ID = g.Genre_ID
+WHERE
+    p.Name = 'Schauspieler Name'        
+GROUP BY
+    f.Film_ID, f.Titel, f.Erscheinungsjahr 
+ORDER BY
+    f.Erscheinungsjahr;
+
+2.4.2
+
+CREATE VIEW FavoriteGenreFilms AS
+SELECT
+    f.Film_ID,
+    f.Titel AS film_title,
+    f.Bewertungsdurchschnitt AS average_rating,
+    f.Bewertungsanzahl AS total_reviews,
+    g.Name AS genre_name
+FROM
+    Film f
+    INNER JOIN ist_Genre ig ON f.Film_ID = ig.Film_ID
+    INNER JOIN Genre g ON ig.Genre_ID = g.Genre_ID
+    INNER JOIN LieblingsGenre lg ON ig.Genre_ID = lg.Genre_ID
+WHERE
+    lg.Kritiker_ID = 3;
+
+-- Abfrage auf die Sicht
+SELECT * FROM FavoriteGenreFilms;
+-- delete the sicht
+DROP VIEW FavoriteGenreFilms;
+
+2.4.3
+
+SELECT
+    p.Name AS regisseur_name,
+    AVG(b.Bewertungszahl) AS avg_bewertung
+FROM
+    Bewertung b
+    INNER JOIN Film f ON b.Film_ID = f.Film_ID
+    INNER JOIN regie_in r ON f.Film_ID = r.Film_ID
+    INNER JOIN Person p ON r.Person_ID = p.Person_ID
+WHERE
+    b.Kritiker_ID = 2 
+GROUP BY
+    p.Person_ID, p.Name
+ORDER BY
+    avg_bewertung DESC;
+
+2.4.4
+
+SELECT
+    f.Titel AS film_title,
+    p.Name AS director_name,
+    g.Name AS genre_name
+FROM
+    Film f
+    INNER JOIN regie_in ri ON f.Film_ID = ri.Film_ID
+    INNER JOIN Person p ON ri.Person_ID = p.Person_ID
+    INNER JOIN ist_Genre ig ON f.Film_ID = ig.Film_ID
+    INNER JOIN Genre g ON ig.Genre_ID = g.Genre_ID
+    INNER JOIN LieblingsGenre lg ON g.Genre_ID = lg.Genre_ID
+WHERE
+    lg.Kritiker_ID = 3
+    AND p.Name = 'Christopher Nolan'
+ORDER BY
+    f.Bewertungsdurchschnitt;
+
+2.4.5
+DELIMITER //
+
+CREATE TRIGGER update_film_rating
+AFTER INSERT ON Bewertung
+FOR EACH ROW
+BEGIN
+    DECLARE avg_rating DECIMAL(3, 1);
+    DECLARE total_reviews INT;
+
+    SELECT AVG(Bewertungszahl), COUNT(*)
+    INTO avg_rating, total_reviews
+    FROM Bewertung
+    WHERE Film_ID = NEW.Film_ID;
+
+    UPDATE Film
+    SET Bewertungsdurchschnitt = avg_rating, Bewertungsanzahl = total_reviews
+    WHERE Film_ID = NEW.Film_ID;
+END//
+
+DELIMITER ;
+
+
+Implementierung:
+
+    "Create FILM table ":
+    
+    CREATE TABLE Film (
+	Film_ID INT AUTO_INCREMENT PRIMARY KEY,
+	Titel VARCHAR(255) NOT NULL,
+	Laufzeit INT,
+	Bewertungsdurchschnitt DECIMAL(3, 2),
+	Bewertungsanzahl INT,
+	Erscheinungsjahr INT,
+) 
+    
+    
+    "Create FreundesListe table " :
+    
+    CREATE TABLE FreundesListe (
+	Kritiker_ID_1 INT,
+	Kritiker_ID_2 INT,
+	PRIMARY KEY (Kritiker_ID_1, Kritiker_ID_2),
+	FOREIGN KEY (Kritiker_ID_1) REFERENCES Kritiker(Kritiker_ID),
+	FOREIGN KEY (Kritiker_ID_2) REFERENCES Kritiker(Kritiker_ID)
+) 
+
+
+    "Create Genre table" :
+    CREATE TABLE Genre (
+	Genre_ID INT AUTO_INCREMENT PRIMARY KEY,
+	Name VARCHAR(255) NOT NULL
+) 
+
+    
+    "Create Kritiker table " :
+    CREATE TABLE Kritiker (
+	Kritiker_ID INT AUTO_INCREMENT PRIMARY KEY,
+	UserName VARCHAR(255) NOT NULL,
+	Name VARCHAR(255) NOT NULL,,
+	Bewertungsstil ENUM('Good', 'Bad', 'Neutral') DEFAULT 'Neutral'
+) 
+
+
+    "Create Person table " :
+    CREATE TABLE Person (
+    Person_ID INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(255) NOT NULL,
+    Geburtsdatum DATE,
+    Nationalität VARCHAR(255) NOT NULL,
+) 
+
+    
+    "Create regie_in table " :
+    CREATE TABLE regie_in (
+	Person_ID INT,
+	Film_ID INT,
+	Gage INT,
+	PRIMARY KEY (Person_ID, Film_ID),  
+	FOREIGN KEY (Person_ID) REFERENCES Person(Person_ID),
+	FOREIGN KEY (Film_ID) REFERENCES Film(Film_ID)
+    UNIQUE KEY (Person_ID, Film_ID)
+) 
+    
+    
+    "Create spielt_in table " :
+    CREATE TABLE PersonFilm (
+	Person_ID INT,
+	Film_ID INT,
+	Gage INT
+    PRIMARY KEY(`Person_ID`, `Film_ID`);
+	FOREIGN KEY (Person_ID) REFERENCES Person(Person_ID),
+	FOREIGN KEY (Film_ID) REFERENCES Film(Film_ID)
+) 
+
+    
+    "Create Bewertung table " :
+    CREATE TABLE Bewertung (
+	Kritiker_ID INT,
+	Film_ID INT,
+	Bewertungszahl TINYINT,
+	Kommentar VARCHAR(2000),
+	Verfassungsdatum DATE,
+    Filmstatus ENUM('Seen', 'Unseen', 'Dropped') DEFAULT 'Unseen',
+    PRIMARY KEY(`Kritiker_ID`, `Film_ID`);
+	FOREIGN KEY (Kritiker_ID) REFERENCES Kritiker(Kritiker_ID),
+	FOREIGN KEY (Film_ID) REFERENCES Film(Film_ID),
+	UNIQUE KEY (Kritiker_ID, Film_ID)
+) 
+
+
+    "Create LieblingsGenre table" :
+    CREATE TABLE LieblingsGenre (
+	Kritiker_ID INT,
+	Genre_ID INT,
+	PRIMARY KEY (Genre_ID, Kritiker_ID),  
+	FOREIGN KEY (Genre_ID) REFERENCES Genre(Genre_ID),
+	FOREIGN KEY (Kritiker_ID) REFERENCES Kritiker(Kritiker_ID),
+    UNIQUE KEY (Genre_ID, Kritiker_ID)
+) 
+
+
+    "Create ist_Genre table" :
+    CREATE TABLE ist_Genre(
+	Film_ID INT,
+	Genre_ID INT,
+	PRIMARY KEY (Genre_ID, Film_ID), 
+	FOREIGN KEY (Genre_ID) REFERENCES Genre(Genre_ID),
+	FOREIGN KEY (Film_ID) REFERENCES Film(Film_ID)
+    UNIQUE KEY (Film_ID, Genre_ID)
+) 
+
